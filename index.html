@@ -1,0 +1,1062 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>QuantView — Portfolio Intelligence</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,400&family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg:       #080c12;
+  --bg2:      #0d1420;
+  --bg3:      #121b2b;
+  --surface:  #162032;
+  --border:   #1e2f48;
+  --border2:  #243650;
+  --muted:    #3a5070;
+  --text3:    #4d6a8a;
+  --text2:    #7a9bbc;
+  --text1:    #b8d0ea;
+  --white:    #e8f2ff;
+  --blue:     #3b82f6;
+  --blue-dim: #1d4ed8;
+  --green:    #22c55e;
+  --green-dim:#15803d;
+  --red:      #ef4444;
+  --amber:    #f59e0b;
+  --violet:   #a855f7;
+  --cyan:     #06b6d4;
+  --gold:     #eab308;
+  --glow-b:   rgba(59,130,246,0.15);
+  --glow-g:   rgba(34,197,94,0.15);
+  --glow-r:   rgba(239,68,68,0.15);
+  --r: 8px;
+  --r2: 14px;
+  --font-mono: 'DM Mono', monospace;
+  --font-head: 'Syne', sans-serif;
+  --font-body: 'DM Sans', sans-serif;
+}
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg);
+  color: var(--text1);
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.5;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+body::before {
+  content:'';
+  position:fixed; inset:0; pointer-events:none; z-index:999;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+  opacity: 0.4;
+}
+
+.grid-bg {
+  position: fixed; inset: 0; pointer-events: none; z-index: 0;
+  background-image:
+    linear-gradient(rgba(59,130,246,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(59,130,246,0.04) 1px, transparent 1px);
+  background-size: 48px 48px;
+}
+.grid-glow {
+  position: fixed; inset: 0; pointer-events: none; z-index: 0;
+  background: radial-gradient(ellipse 80% 50% at 50% 0%, rgba(59,130,246,0.08) 0%, transparent 70%);
+}
+
+.shell { position: relative; z-index: 1; }
+
+header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 20px 32px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(8,12,18,0.8);
+  backdrop-filter: blur(16px);
+  position: sticky; top: 0; z-index: 100;
+}
+.logo {
+  font-family: var(--font-head);
+  font-size: 22px; font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--white);
+  display: flex; align-items: center; gap: 10px;
+}
+.logo-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--blue); box-shadow: 0 0 12px var(--blue); animation: pulse 2s ease-in-out infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+.header-right { display: flex; align-items: center; gap: 16px; }
+.header-badge {
+  font-family: var(--font-mono); font-size: 11px;
+  background: var(--surface); border: 1px solid var(--border2);
+  padding: 5px 12px; border-radius: 20px;
+  color: var(--text2); letter-spacing: .05em;
+}
+.live-dot { display:inline-block; width:6px; height:6px; border-radius:50%; background:var(--green); margin-right:6px; animation:pulse 1.5s ease-in-out infinite; }
+
+.tabs-bar {
+  display: flex; gap: 0; padding: 0 32px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(8,12,18,0.6);
+  backdrop-filter: blur(8px);
+}
+.tab-btn {
+  font-family: var(--font-body); font-size: 13px; font-weight: 500;
+  color: var(--text3); background: transparent; border: none;
+  padding: 14px 20px; cursor: pointer;
+  border-bottom: 2px solid transparent; transition: all .2s;
+  letter-spacing: .01em;
+}
+.tab-btn:hover { color: var(--text2); }
+.tab-btn.active { color: var(--blue); border-bottom-color: var(--blue); }
+
+.main { padding: 28px 32px; max-width: 1600px; margin: 0 auto; }
+.tab-pane { display: none; }
+.tab-pane.active { display: block; animation: fadeIn .25s ease; }
+@keyframes fadeIn { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
+
+.section-label {
+  font-family: var(--font-mono); font-size: 10px;
+  letter-spacing: .12em; text-transform: uppercase;
+  color: var(--muted); margin-bottom: 14px;
+  display: flex; align-items: center; gap: 8px;
+}
+.section-label::after { content:''; flex:1; height:1px; background:var(--border); }
+
+.card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--r2);
+  padding: 20px;
+  transition: border-color .2s;
+}
+.card:hover { border-color: var(--border2); }
+.card-title {
+  font-family: var(--font-head);
+  font-size: 12px; font-weight: 600;
+  letter-spacing: .08em; text-transform: uppercase;
+  color: var(--text3); margin-bottom: 16px;
+}
+.kpi-strip { display: grid; grid-template-columns: repeat(5,1fr); gap: 12px; margin-bottom: 24px; }
+.kpi-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--r2);
+  padding: 18px 20px;
+  position: relative; overflow: hidden;
+  transition: transform .2s, border-color .2s;
+}
+.kpi-card:hover { transform: translateY(-2px); border-color: var(--border2); }
+.kpi-card::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+}
+.kpi-card.blue::before { background: linear-gradient(90deg, var(--blue), transparent); }
+.kpi-card.green::before { background: linear-gradient(90deg, var(--green), transparent); }
+.kpi-card.red::before { background: linear-gradient(90deg, var(--red), transparent); }
+.kpi-card.amber::before { background: linear-gradient(90deg, var(--amber), transparent); }
+.kpi-card.violet::before { background: linear-gradient(90deg, var(--violet), transparent); }
+.kpi-label { font-size: 11px; color: var(--text3); font-family: var(--font-mono); letter-spacing:.05em; margin-bottom: 8px; }
+.kpi-value { font-family: var(--font-head); font-size: 26px; font-weight: 700; color: var(--white); line-height: 1; }
+.kpi-sub { font-size: 11px; margin-top: 5px; font-family: var(--font-mono); }
+.up { color: var(--green); }
+.dn { color: var(--red); }
+.neu { color: var(--text2); }
+
+.g2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+.g3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+.g-wide { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; margin-bottom: 16px; }
+.g-wide2 { display: grid; grid-template-columns: 3fr 1fr; gap: 16px; margin-bottom: 16px; }
+.g-risk { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; margin-bottom: 24px; }
+
+.chart-wrap { position: relative; width: 100%; }
+.chart-wrap.h200 { height: 200px; }
+.chart-wrap.h260 { height: 260px; }
+.chart-wrap.h320 { height: 320px; }
+.chart-wrap.h280 { height: 280px; }
+.chart-wrap.h360 { height: 360px; }
+.chart-wrap.h180 { height: 180px; }
+
+.ticker-table { width: 100%; border-collapse: collapse; }
+.ticker-table th {
+  font-family: var(--font-mono); font-size: 10px; letter-spacing: .08em;
+  color: var(--text3); text-transform: uppercase;
+  padding: 8px 12px; text-align: right; border-bottom: 1px solid var(--border);
+}
+.ticker-table th:first-child { text-align: left; }
+.ticker-table td {
+  padding: 10px 12px; text-align: right; border-bottom: 1px solid var(--border);
+  font-family: var(--font-mono); font-size: 12px; color: var(--text1);
+}
+.ticker-table td:first-child { text-align: left; }
+.ticker-table tr:last-child td { border-bottom: none; }
+.ticker-table tr:hover td { background: var(--surface); }
+.t-name { font-family: var(--font-head); font-size: 13px; font-weight: 700; color: var(--white); }
+.t-dot { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 8px; vertical-align: middle; }
+.tag {
+  display: inline-block; font-family: var(--font-mono); font-size: 10px;
+  padding: 2px 8px; border-radius: 4px; font-weight: 500;
+}
+.tag-up   { background: rgba(34,197,94,0.12); color: var(--green); border: 1px solid rgba(34,197,94,0.25); }
+.tag-dn   { background: rgba(239,68,68,0.12); color: var(--red);   border: 1px solid rgba(239,68,68,0.25); }
+.tag-neu  { background: rgba(59,130,246,0.12); color: var(--blue); border: 1px solid rgba(59,130,246,0.25); }
+.tag-v    { background: rgba(168,85,247,0.12); color: var(--violet); border: 1px solid rgba(168,85,247,0.25); }
+
+.sparkline-row { display: flex; gap: 10px; align-items: center; }
+.spark-canvas { border-radius: 4px; }
+
+.risk-card {
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: var(--r2); padding: 16px;
+}
+.risk-card-ticker { font-family: var(--font-head); font-size: 16px; font-weight: 700; color: var(--white); margin-bottom: 12px; }
+.risk-row { display: flex; justify-content: space-between; align-items: center; padding: 5px 0; border-bottom: 1px solid var(--border); }
+.risk-row:last-child { border-bottom: none; }
+.risk-key { font-family: var(--font-mono); font-size: 10px; color: var(--text3); letter-spacing:.05em; }
+.risk-val { font-family: var(--font-mono); font-size: 12px; font-weight: 500; }
+
+.corr-grid { display: grid; gap: 3px; }
+.corr-cell {
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 4px; font-family: var(--font-mono); font-size: 11px;
+  height: 42px; font-weight: 500; transition: transform .15s;
+  cursor: default;
+}
+.corr-cell:hover { transform: scale(1.05); }
+.corr-label { font-family: var(--font-head); font-size: 12px; font-weight: 700; color: var(--text2); display: flex; align-items: center; justify-content: center; }
+
+.weight-bar-wrap { display: flex; flex-direction: column; gap: 10px; }
+.weight-row { display: flex; align-items: center; gap: 12px; }
+.weight-ticker { font-family: var(--font-head); font-size: 12px; font-weight: 700; color: var(--white); width: 48px; }
+.weight-bar-bg { flex: 1; height: 8px; background: var(--surface); border-radius: 4px; overflow: hidden; }
+.weight-bar-fill { height: 100%; border-radius: 4px; transition: width .6s cubic-bezier(.34,1.56,.64,1); }
+.weight-pct { font-family: var(--font-mono); font-size: 11px; color: var(--text2); width: 36px; text-align: right; }
+
+.insight-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 14px; margin-bottom: 24px; }
+.insight-card {
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: var(--r2); padding: 18px;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.insight-icon { font-size: 20px; }
+.insight-title { font-family: var(--font-head); font-size: 13px; font-weight: 700; color: var(--white); }
+.insight-body { font-size: 12px; color: var(--text2); line-height: 1.6; }
+.insight-stat { font-family: var(--font-mono); font-size: 18px; font-weight: 500; }
+
+.heat-table { width: 100%; border-collapse: collapse; }
+.heat-table th { font-family: var(--font-mono); font-size: 10px; color: var(--text3); letter-spacing:.06em; padding: 6px 8px; text-align: center; }
+.heat-table td { padding: 5px 4px; }
+.heat-cell {
+  border-radius: 5px; height: 36px; display: flex;
+  align-items: center; justify-content: center;
+  font-family: var(--font-mono); font-size: 11px; font-weight: 500;
+  cursor: default; transition: transform .15s;
+}
+.heat-cell:hover { transform: scale(1.05); }
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--bg2); }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+.spinner { width: 20px; height: 20px; border: 2px solid var(--border); border-top-color: var(--blue); border-radius: 50%; animation: spin .7s linear infinite; }
+@keyframes spin { to{ transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+<div class="grid-bg"></div>
+<div class="grid-glow"></div>
+
+<div class="shell">
+
+<header>
+  <div class="logo">
+    <div class="logo-dot"></div>
+    QuantView
+  </div>
+  <div class="header-right">
+    <span class="header-badge"><span class="live-dot"></span>SIMULATED · 252 DAYS</span>
+    <span class="header-badge" style="color:var(--text1);" id="port-header">Portfolio: $122,431</span>
+  </div>
+</header>
+
+<div class="tabs-bar">
+  <button class="tab-btn active" onclick="switchTab('overview')">Overview</button>
+  <button class="tab-btn" onclick="switchTab('stocks')">Stocks</button>
+  <button class="tab-btn" onclick="switchTab('risk')">Risk & Correlation</button>
+  <button class="tab-btn" onclick="switchTab('heatmap')">Monthly Returns</button>
+  <button class="tab-btn" onclick="switchTab('insights')">Insights</button>
+</div>
+
+<div class="main">
+
+<div id="pane-overview" class="tab-pane active">
+
+  <div class="kpi-strip">
+    <div class="kpi-card blue">
+      <div class="kpi-label">Portfolio Value</div>
+      <div class="kpi-value">$122,431</div>
+      <div class="kpi-sub up">+22.4% total return</div>
+    </div>
+    <div class="kpi-card green">
+      <div class="kpi-label">Net Gain</div>
+      <div class="kpi-value">+$22,431</div>
+      <div class="kpi-sub up">+22.43% vs $100K initial</div>
+    </div>
+    <div class="kpi-card red">
+      <div class="kpi-label">vs S&P 500</div>
+      <div class="kpi-value" style="color:var(--red)">−18.4%</div>
+      <div class="kpi-sub dn">S&P returned +40.8%</div>
+    </div>
+    <div class="kpi-card amber">
+      <div class="kpi-label">Best Performer</div>
+      <div class="kpi-value" style="font-size:20px">AMZN</div>
+      <div class="kpi-sub up">+61.2% over period</div>
+    </div>
+    <div class="kpi-card violet">
+      <div class="kpi-label">5-Stock Universe</div>
+      <div class="kpi-value" style="font-size:20px">$100K</div>
+      <div class="kpi-sub neu">Deployed capital</div>
+    </div>
+  </div>
+
+  <div class="g-wide2">
+    <div class="card">
+      <div class="card-title">Portfolio vs S&P 500 — 252 Trading Days</div>
+      <div class="chart-wrap h280">
+        <canvas id="portfolioChart"></canvas>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Allocation Weights</div>
+      <div class="weight-bar-wrap" style="margin-top:8px;" id="weightBars"></div>
+      <div style="margin-top:20px;">
+        <div class="card-title">Sector Exposure</div>
+        <div class="chart-wrap h140" style="height:140px;">
+          <canvas id="sectorChart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-label">Live Positions</div>
+  <div class="card" style="padding:0; overflow:hidden; margin-bottom:16px;">
+    <table class="ticker-table">
+      <thead>
+        <tr>
+          <th>Ticker</th><th>Price</th><th>Start</th><th>Change %</th><th>High</th><th>Low</th><th>Volatility</th><th>Sharpe</th><th>Trend</th>
+        </tr>
+      </thead>
+      <tbody id="stockTableBody"></tbody>
+    </table>
+  </div>
+
+  <div class="g2">
+    <div class="card">
+      <div class="card-title">Daily Return Distributions</div>
+      <div class="chart-wrap h200"><canvas id="returnDistChart"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Cumulative Normalized Returns (Base = 100)</div>
+      <div class="chart-wrap h200"><canvas id="normRetChart"></canvas></div>
+    </div>
+  </div>
+
+</div>
+
+<div id="pane-stocks" class="tab-pane">
+
+  <div style="display:flex;gap:10px;margin-bottom:20px;" id="stockBtns"></div>
+
+  <div class="g-wide">
+    <div class="card">
+      <div class="card-title" id="stockChartTitle">AAPL — Price Series</div>
+      <div class="chart-wrap h320"><canvas id="stockPriceChart"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Stock Metrics</div>
+      <div id="stockMetricsPanel" style="display:flex;flex-direction:column;gap:0;"></div>
+    </div>
+  </div>
+
+  <div class="g2">
+    <div class="card">
+      <div class="card-title" id="volChartTitle">AAPL — Daily Volume</div>
+      <div class="chart-wrap h200"><canvas id="stockVolChart"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-title" id="retChartTitle">AAPL — Rolling 21-Day Return (%)</div>
+      <div class="chart-wrap h200"><canvas id="stockRollingChart"></canvas></div>
+    </div>
+  </div>
+
+</div>
+
+<div id="pane-risk" class="tab-pane">
+
+  <div class="section-label">Risk Metrics per Stock</div>
+  <div class="g-risk" id="riskCards"></div>
+
+  <div class="g2">
+    <div class="card">
+      <div class="card-title">Correlation Matrix</div>
+      <div id="corrMatrix" style="margin-top:4px;"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Value at Risk (VaR 95%) per Stock</div>
+      <div class="chart-wrap h260"><canvas id="varChart"></canvas></div>
+    </div>
+  </div>
+
+  <div class="g2">
+    <div class="card">
+      <div class="card-title">Max Drawdown by Stock (%)</div>
+      <div class="chart-wrap h200"><canvas id="drawdownChart"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Beta vs S&P 500</div>
+      <div class="chart-wrap h200"><canvas id="betaChart"></canvas></div>
+    </div>
+  </div>
+
+</div>
+
+<div id="pane-heatmap" class="tab-pane">
+
+  <div class="card" style="margin-bottom:16px;">
+    <div class="card-title">Monthly Return Heatmap (%) — Green = Positive · Red = Negative</div>
+    <div style="overflow-x:auto; margin-top:4px;">
+      <table class="heat-table" id="heatTable"></table>
+    </div>
+  </div>
+
+  <div class="g2">
+    <div class="card">
+      <div class="card-title">Best Month Per Stock</div>
+      <div class="chart-wrap h200"><canvas id="bestMonthChart"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Monthly Return Volatility (Std Dev %)</div>
+      <div class="chart-wrap h200"><canvas id="monthlyVolChart"></canvas></div>
+    </div>
+  </div>
+
+</div>
+
+
+<div id="pane-insights" class="tab-pane">
+
+  <div class="insight-grid" id="insightGrid"></div>
+
+  <div class="g2">
+    <div class="card">
+      <div class="card-title">Sharpe Ratio Ranking</div>
+      <div class="chart-wrap h260"><canvas id="sharpeChart"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Risk vs Return Scatter</div>
+      <div class="chart-wrap h260"><canvas id="riskReturnChart"></canvas></div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:16px;">
+    <div class="card-title">Portfolio Performance Summary</div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-top:8px;" id="summaryGrid"></div>
+  </div>
+
+</div>
+
+</div>
+</div>
+
+<script>
+
+const COLORS = {
+  AAPL:'#3b82f6', MSFT:'#22c55e', GOOGL:'#ef4444', AMZN:'#f59e0b', NVDA:'#a855f7'
+};
+const TICKERS = ['AAPL','MSFT','GOOGL','AMZN','NVDA'];
+const WEIGHTS = {AAPL:0.25, MSFT:0.25, GOOGL:0.15, AMZN:0.15, NVDA:0.20};
+
+const PRICES = {
+AAPL:[182.0,183.35,183.09,184.83,188.87,188.35,187.83,192.09,194.24,193.07,194.63,193.48,192.33,193.07,188.11,183.76,182.43,179.97,180.85,178.68,175.3,178.99,178.52,178.77,175.37,174.14,174.49,171.82,172.8,171.45,170.85,169.51,174.01,174.06,171.61,173.67,170.84,171.42,166.91,163.95,164.48,166.25,166.73,166.55,165.94,162.65,161.12,160.17,162.62,163.48,159.61,160.41,159.63,158.22,159.65,162.03,164.21,162.4,161.78,162.61,164.9,163.89,163.55,161.15,158.58,160.45,163.58,163.5,165.87,166.79,165.38,166.3,169.96,169.96,173.78,167.66,169.67,169.96,169.34,169.64,165.11,164.7,165.6,169.11,167.98,166.19,165.12,167.31,168.16,167.01,168.29,168.6,170.97,169.39,168.71,167.88,164.59,165.35,166.03,166.13,165.67,162.54,161.67,160.99,159.28,159.01,159.98,164.3,164.78,165.45,165.36,161.11,161.13,161.34,167.03,166.67,167.45,167.45,164.84,167.56,169.4,171.35,169.29,172.7,169.46,170.93,176.29,173.97,172.7,173.02,171.9,168.33,168.58,166.2,167.37,165.34,169.01,167.27,166.61,168.58,165.81,166.42,169.55,165.89,166.4,167.09,168.99,166.2,163.27,164.54,165.3,165.96,166.84,165.35,165.97,166.73,165.17,169.58,170.78,168.07,169.69,167.5,169.42,172.25,170.38,172.76,173.84,175.92,180.69,180.17,178.39,176.29,174.4,174.3,175.21,175.97,178.09,178.21,181.93,181.35,188.41,190.15,188.0,185.32,186.66,186.17,188.12,189.45,189.35,187.24,183.44,182.4,184.67,185.31,182.23,182.76,183.83,181.68,182.16,182.4,179.62,180.6,182.1,184.95,187.76,184.3,182.02,183.41,184.81,186.23,196.54,198.2,201.45,204.23,206.18,205.39,207.66,205.55,204.98,203.71,204.04,210.8,205.52,207.59,203.1,201.88,205.05,205.33,202.39,200.49,202.49,200.55,201.26,201.48,199.77,205.9,207.82,202.17,202.79,201.04,203.53,201.41,201.19,202.7,205.25,201.97,201.13,199.91,198.21,203.22,204.47,201.03,203.7],
+MSFT:[375.0,372.17,370.13,367.61,363.86,364.32,360.75,362.21,362.22,361.36,357.47,355.11,358.74,361.24,357.04,357.71,361.35,354.05,356.71,353.97,356.75,353.56,345.83,339.03,339.45,340.77,337.13,340.07,333.23,333.17,328.33,325.85,326.26,322.94,321.59,325.9,323.74,327.38,322.95,325.32,331.5,321.54,318.53,321.06,320.44,322.14,319.91,320.46,320.03,324.98,326.23,327.83,326.34,324.55,322.99,324.81,323.29,324.68,333.5,337.39,336.22,341.56,340.03,331.62,327.64,320.21,319.0,319.28,326.3,327.85,327.16,330.8,321.92,323.08,326.44,320.62,325.48,327.08,325.58,328.39,338.14,339.13,340.41,338.66,335.27,339.01,335.58,336.1,334.29,336.53,338.16,342.83,340.85,339.91,335.96,334.29,336.1,339.54,335.83,339.74,345.81,347.84,356.39,353.16,347.88,340.39,347.09,350.18,350.16,351.62,346.89,357.97,358.78,359.51,363.04,365.48,366.74,363.34,365.74,374.75,381.4,389.38,387.12,382.57,382.21,382.72,388.28,380.33,387.97,387.45,385.61,380.97,373.35,377.48,378.07,372.21,366.42,365.1,373.1,372.12,365.37,364.47,363.45,351.53,351.51,350.71,354.03,362.6,368.02,367.01,362.16,374.33,374.85,375.15,375.27,376.45,376.01,373.53,371.21,371.29,368.99,365.92,366.65,365.7,372.93,360.91,366.14,372.17,362.81,361.47,360.01,353.91,350.68,346.03,353.98,358.4,364.42,367.98,363.02,360.86,363.32,357.99,361.45,360.59,359.12,362.58,364.85,363.42,369.0,364.24,367.31,370.3,369.1,370.85,365.28,369.8,369.17,366.98,372.1,369.04,362.78,355.96,358.92,353.4,361.53,352.4,360.24,361.43,361.21,358.97,361.01,361.07,366.35,367.11,368.04,366.59,366.56,368.22,360.6,354.75,358.32,359.32,358.72,359.03,360.83,358.61,355.34,356.44,352.3,354.34,347.04,351.8,354.12,355.49,360.15,368.02,372.99,364.67,359.06,356.48,356.82,359.38,356.34,357.4,354.24,351.75,345.79,342.01,336.45,332.54,337.2,333.41,344.87],
+GOOGL:[140.0,142.38,141.24,144.25,144.75,149.61,148.05,152.21,152.73,151.23,150.13,149.43,150.49,151.78,150.47,150.47,155.68,160.03,161.19,161.35,161.71,163.34,160.78,160.19,156.09,157.13,158.8,157.65,161.66,158.63,155.06,155.67,158.31,162.62,161.51,164.34,164.29,163.91,166.26,168.04,163.97,167.89,171.64,170.02,171.14,172.54,173.31,171.87,170.13,170.12,173.35,174.9,173.94,176.13,168.47,171.6,167.02,166.13,163.28,160.05,163.06,161.92,162.86,162.8,164.08,164.34,161.11,163.71,162.5,158.62,157.61,161.44,163.67,162.83,162.0,161.24,166.66,167.72,168.92,171.74,172.45,171.81,171.34,171.21,171.17,173.2,173.4,175.48,175.31,175.59,170.21,172.75,173.76,176.57,168.76,174.46,174.14,177.27,174.45,176.2,173.37,171.73,177.05,176.58,177.25,179.76,181.23,181.72,182.83,189.95,189.85,190.52,193.77,197.24,201.03,203.13,199.58,204.85,201.26,202.29,199.97,199.84,200.95,202.04,203.46,208.77,210.34,209.61,212.89,216.99,212.91,215.0,217.46,216.52,221.34,220.9,221.41,220.89,221.02,217.31,212.52,218.0,215.18,211.93,204.93,202.95,198.84,204.12,207.46,205.3,212.79,216.18,215.15,206.92,214.6,210.02,204.72,208.12,216.35,221.2,223.25,225.43,228.56,231.39,232.5,232.96,232.81,230.15,229.21,223.26,222.99,219.63,215.92,216.61,221.48,224.79,219.38,216.06,219.36,216.07,215.38,217.33,214.12,214.55,210.16,208.26,209.38,204.27,205.76,205.77,207.64,208.45,213.05,213.54,212.18,212.66,214.57,214.81,215.02,212.73,210.6,206.07,211.9,207.86,205.68,203.44,206.4,205.51,209.66,207.53,208.51,205.86,213.01,209.14,210.23,212.42,213.88,213.33,212.97,213.19,212.78,216.11,223.84,221.96,217.3,217.08,226.16,223.39,229.31,235.54,233.57,235.76,241.97,240.61,239.93,237.82,234.13,231.83,227.49,227.69,225.03,225.94,220.54,221.77,224.78,217.91,219.28,223.64,219.49,225.43,227.0,224.58,224.46],
+AMZN:[178.0,175.88,170.29,170.15,169.89,174.6,176.67,173.61,179.5,183.52,185.54,184.92,181.93,180.85,184.48,190.83,196.23,194.67,190.98,191.58,185.81,186.99,186.63,185.22,180.2,181.95,180.36,176.79,168.17,168.19,173.64,178.92,177.6,175.83,177.41,174.42,175.46,177.97,181.97,181.77,181.23,178.56,176.09,175.5,176.75,179.74,177.32,182.17,181.42,181.46,179.2,171.81,174.62,177.02,176.26,176.58,178.31,173.57,172.07,174.61,170.89,171.89,167.93,169.43,169.43,164.78,168.3,166.24,163.99,164.68,168.15,165.27,165.56,166.92,169.08,169.72,168.73,166.39,166.75,163.73,155.61,156.91,159.53,153.12,150.51,152.26,157.99,158.15,156.23,155.83,159.75,158.05,155.93,154.71,152.23,152.65,157.19,158.19,157.59,156.88,152.71,155.21,155.09,154.7,163.77,164.74,162.67,161.55,164.97,165.4,161.36,164.1,162.28,167.84,171.18,169.94,173.94,174.26,177.01,178.65,176.11,174.23,177.54,176.61,175.47,172.65,174.05,180.62,177.36,177.55,182.14,182.0,183.58,180.29,181.77,181.29,184.58,188.61,197.55,199.71,200.99,201.81,200.68,202.01,201.09,201.82,206.69,203.19,207.45,212.46,212.15,204.49,202.44,207.25,207.3,203.81,202.13,205.28,207.4,206.66,205.46,204.18,201.01,206.95,205.91,210.51,216.38,220.36,218.83,220.53,220.58,217.23,218.62,214.25,218.93,217.28,218.19,219.42,218.56,220.98,219.28,222.81,217.72,218.35,226.09,222.28,219.78,221.92,222.77,224.29,226.38,229.07,233.75,235.6,234.75,237.7,245.96,245.54,241.51,246.43,246.06,236.96,240.68,238.57,238.35,239.9,240.86,244.05,242.34,244.69,243.73,247.09,249.94,246.01,250.93,248.72,252.46,254.26,262.81,261.94,260.5,260.57,259.35,263.2,255.97,251.41,246.88,251.21,259.08,258.76,258.16,258.64,264.17,260.05,261.31,266.01,268.55,269.62,274.59,261.98,265.3,262.42,254.25,256.71,263.18,262.71,267.33,275.22,281.85,290.31,294.32,294.9,286.87],
+NVDA:[495.0,491.98,465.46,474.57,458.83,460.24,464.52,483.46,466.49,428.82,431.65,454.89,471.8,475.27,469.34,480.87,468.43,475.45,482.98,498.41,539.71,546.5,539.42,539.77,514.08,504.76,499.63,492.94,495.76,485.01,501.36,502.06,502.62,498.66,501.55,514.13,502.34,493.74,490.19,472.49,462.28,456.72,468.83,472.98,476.24,488.55,487.32,493.43,492.67,497.07,489.61,457.54,456.43,475.87,489.21,503.48,522.15,524.19,527.86,519.42,515.5,525.3,544.29,542.9,536.75,537.51,547.5,526.27,493.79,486.82,470.91,464.82,463.52,458.23,478.16,483.27,488.08,497.46,482.32,497.43,497.05,507.29,492.79,472.21,483.95,489.82,478.11,467.12,482.93,467.56,490.53,478.83,488.25,484.39,493.42,486.55,484.98,486.21,473.25,483.96,477.63,475.2,462.63,430.82,429.09,460.09,471.09,471.49,468.64,469.58,477.58,462.5,478.01,488.47,499.21,506.15,507.14,517.62,527.11,522.56,514.85,517.05,541.01,523.06,502.44,505.49,506.92,510.13,514.38,511.84,534.66,511.65,500.46,499.69,477.61,475.89,499.53,500.52,504.5,487.47,479.69,475.28,471.67,489.8,498.29,483.5,487.57,495.19,512.16,536.37,521.88,510.73,493.52,490.94,498.16,513.01,512.62,508.69,511.59,500.32,531.58,508.6,511.98,542.96,543.82,541.65,536.93,534.93,556.93,523.8,547.83,526.89,523.64,518.03,527.47,504.81,512.17,543.17,523.31,526.86,517.78,524.8,525.81,517.05,524.97,553.29,551.07,563.2,543.68,529.87,537.76,561.64,568.12,563.88,564.65,545.74,555.94,570.81,564.32,557.62,562.62,556.47,556.2,591.12,587.81,582.68,572.87,585.9,583.7,573.85,596.57,621.93,612.28,581.53,599.21,588.51,602.68,570.73,586.17,567.17,579.84,580.88,566.17,560.45,572.25,574.76,585.17,619.75,593.69,622.4,625.11,610.23,588.46,586.12,602.47,601.13,628.31,603.82,604.45,584.17,591.05,606.93,600.57,558.6,562.54,570.33,577.71,599.13,582.02,594.17,615.45,586.0,592.16]
+};
+
+const PORTFOLIO = [100000.0,99951.1,98114.66,98864.46,98565.1,99498.93,99369.73,101005.33,101167.73,99605.71,99727.38,100223.82,100852.69,101308.41,100273.04,100721.15,101291.77,101085.43,101501.22,101711.62,102653.69,103496.31,102325.73,101738.85,99399.52,99200.9,98843.97,97978.85,97474.65,96527.91,96860.2,97049.38,97889.1,97827.26,97531.71,98661.54,97734.72,97880.39,97410.98,96621.09,96211.79,95761.28,96309.48,96397.8,96629.73,97190.48,96660.52,97067.99,97095.52,97723.73,97129.68,95593.8,95476.41,96385.74,96132.4,97519.55,98127.08,97558.75,97778.1,97678.41,97765.61,98340.96,98726.53,97900.01,97170.31,96598.56,97302.03,96556.9,95718.88,95309.4,94611.1,94901.74,95023.32,94911.53,96558.6,95508.91,96800.64,97242.51,96604.54,97491.23,96895.43,97359.83,97153.36,96133.22,96002.11,96607.71,96263.23,96391.02,96845.89,96212.54,97179.02,97189.09,97692.81,97455.41,96417.74,96560.93,96514.54,97317.59,96287.33,97122.12,96553.23,96195.39,96697.9,95020.68,95200.0,96266.78,97274.19,98047.88,98404.46,99430.9,99075.27,98923.54,99801.8,101142.26,103280.66,103794.78,103982.65,104771.03,104803.04,105842.06,105764.01,106480.4,107412.7,106890.94,105644.83,106335.27,107786.17,107542.63,108125.93,108487.89,109083.06,107565.77,107036.71,106576.05,106525.12,105698.52,107103.68,107100.57,108471.35,107773.06,106222.87,106724.73,106543.44,105742.42,105326.64,104619.89,105236.69,106003.43,107364.8,108640.86,108612.84,108782.04,107959.12,107193.76,108405.71,108403.96,107435.15,108346.54,109534.31,109169.32,110620.07,109311.8,109828.99,112209.88,112501.05,112375.89,113160.79,113818.09,114508.56,112514.97,113119.32,110935.83,110049.2,109204.47,111157.05,110856.16,111343.11,112597.39,112256.39,112027.59,112577.31,113251.03,112454.31,111774.07,112362.02,113144.99,113383.81,113594.1,113394.95,112358.96,112736.92,114071.72,115452.59,115694.25,114713.61,114623.73,116041.54,116191.34,116019.28,115746.79,114890.21,113069.46,114400.06,115223.78,115765.92,114365.33,114576.49,115546.68,115935.98,115553.54,118047.83,119303.71,120718.48,119162.77,120738.36,120149.26,121503.2,120125.88,120845.35,119463.48,120093.46,121493.4,120859.19,121056.09,119927.55,119305.54,120534.7,122111.77,121676.48,123352.02,122987.94,122712.67,123216.64,122750.74,123520.45,125003.0,126514.94,124038.42,123728.86,121455.87,122093.32,122469.2,120712.29,119633.71,120800.23,119722.75,120044.33,121622.23,120440.8,122708.58,124556.88,122431.38];
+
+const SP500 = [100000.0,100208.96,103120.42,103523.75,103262.08,104210.42,104731.88,105193.96,105844.58,107967.92,106866.46,107392.29,106502.29,107108.96,106228.96,105856.46,105607.29,106631.67,107607.5,106394.17,106495.42,105829.38,104623.54,104454.17,104195.21,106657.92,107141.46,105801.46,105283.75,106350.62,108517.08,106949.17,105111.46,107032.29,107473.54,106641.46,107227.71,104635.21,104683.75,105053.96,106021.04,105055.62,105186.04,104315.21,104612.5,103775.83,103421.04,102496.67,103173.96,104058.96,103873.54,103955.83,102586.88,102340.83,102336.46,104947.71,103895.62,105388.54,106431.87,106760.42,108596.25,109025.83,109474.58,109466.88,110787.71,111989.79,111377.71,110045.42,109882.08,109101.46,109083.12,110413.75,109985.21,109988.12,110095.83,111030.0,108744.37,108169.58,108432.5,109716.46,109254.79,107380.83,108058.12,107457.71,106302.29,105722.71,105583.96,105027.71,102906.04,103826.67,105130.42,105825.21,104738.96,104584.79,104623.54,105262.5,105975.21,105287.92,105415.0,105917.29,107430.62,108194.79,109051.67,109185.21,110697.92,111175.21,110321.88,111842.92,112631.46,112209.38,111750.21,112112.29,112652.71,112911.46,113293.12,115177.29,116399.58,116659.79,117752.92,116660.0,117150.0,119221.46,119027.5,118128.96,117453.96,116301.04,115491.67,115137.71,113667.71,113733.54,114756.88,113825.83,115521.46,116130.42,117317.5,116640.83,117637.29,116480.0,117514.58,117756.46,118424.79,117167.08,116230.42,116938.75,115945.42,116504.38,115058.75,116034.58,114740.62,115390.62,116125.0,115412.71,116099.38,116435.62,115894.17,114844.58,112783.12,113205.21,111591.67,111740.62,111510.83,112277.29,112005.62,111705.62,112529.38,112934.79,113321.67,113874.38,112282.5,113137.08,113842.92,112803.12,112591.88,112598.54,112504.17,112908.33,114495.21,115721.46,114344.79,115068.54,116572.92,117050.21,118314.17,120637.5,121862.5,122202.71,123468.75,123691.25,123772.71,123415.62,125306.25,124394.79,126263.54,126916.04,125302.92,125793.33,123375.0,124160.0,125256.88,124611.46,124810.83,127191.88,126640.21,125433.33,127256.88,129694.79,129755.21,131057.92,132786.88,131915.62,131368.75,132962.92,135155.21,135934.58,134867.29,137482.92,136853.75,136480.0,136981.25,139067.71,140255.0,140866.67,141545.83,141665.21,142475.62,139170.62,138841.04,139218.12,137771.67,138335.21,138127.71,140498.54,142664.17,142098.96,141957.71,141919.79,141376.46,141698.33,140747.5,139311.88,140194.58,141091.88,140083.96,141335.21,140554.79,140952.29,142110.42,142126.67,142800.21,142166.46,141963.96,141749.38,140813.54];
+
+const STOCK_META = {
+  AAPL:{start:182.0,end:203.7,change_pct:11.92,high:210.8,low:158.22,volatility:1.3414,sharpe:0.635},
+  MSFT:{start:375.0,end:344.87,change_pct:-8.03,high:389.38,low:318.53,volatility:1.2531,sharpe:-0.322},
+  GOOGL:{start:140.0,end:224.46,change_pct:60.33,high:241.97,low:140.0,volatility:1.6292,sharpe:1.956},
+  AMZN:{start:178.0,end:286.87,change_pct:61.16,high:294.9,low:150.51,volatility:1.7717,sharpe:1.839},
+  NVDA:{start:495.0,end:592.16,change_pct:19.63,high:628.31,low:428.82,volatility:2.8147,sharpe:0.625}
+};
+const RISK_METRICS = {
+  AAPL:{var_95:-2.0037,cvar_95:-2.4841,max_drawdown:-18.71,beta:-0.089},
+  MSFT:{var_95:-2.0532,cvar_95:-2.3901,max_drawdown:-15.06,beta:0.091},
+  GOOGL:{var_95:-2.3975,cvar_95:-2.7832,max_drawdown:-12.67,beta:-0.054},
+  AMZN:{var_95:-2.716,cvar_95:-3.1204,max_drawdown:-23.3,beta:0.058},
+  NVDA:{var_95:-4.3124,cvar_95:-5.1872,max_drawdown:-21.63,beta:-0.312}
+};
+const CORR = {
+  AAPL:{AAPL:1.0,MSFT:0.093,GOOGL:0.096,AMZN:-0.017,NVDA:0.113},
+  MSFT:{AAPL:0.093,MSFT:1.0,GOOGL:0.075,AMZN:-0.098,NVDA:-0.001},
+  GOOGL:{AAPL:0.096,MSFT:0.075,GOOGL:1.0,AMZN:-0.043,NVDA:-0.026},
+  AMZN:{AAPL:-0.017,MSFT:-0.098,GOOGL:-0.043,AMZN:1.0,NVDA:0.104},
+  NVDA:{AAPL:0.113,MSFT:-0.001,GOOGL:-0.026,AMZN:0.104,NVDA:1.0}
+};
+const MONTHLY = {
+  AAPL:[-1.65,-6.85,-3.35,4.24,-5.34,10.87,-5.72,8.72,3.62,4.97,2.04,0.24],
+  MSFT:[-5.72,-9.91,4.11,1.1,1.53,14.07,-6.61,0.06,0.39,-0.89,-2.55,-5.23],
+  GOOGL:[16.67,5.08,-5.15,5.14,5.02,17.01,-2.96,12.29,-10.23,1.33,13.07,-4.74],
+  AMZN:[5.05,-5.83,-3.78,-11.17,9.45,5.65,16.74,7.7,2.5,8.67,6.12,14.02],
+  NVDA:[10.4,-14.21,15.8,-10.86,-4.93,10.18,-2.31,12.47,-4.86,12.59,2.29,-3.97]
+};
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+Chart.defaults.color = '#4d6a8a';
+Chart.defaults.borderColor = '#1e2f48';
+Chart.defaults.font.family = "'DM Mono', monospace";
+Chart.defaults.font.size = 11;
+
+const baseGridOpts = {
+  grid: { color: 'rgba(30,47,72,0.6)', drawBorder: false },
+  ticks: { color: '#4d6a8a', padding: 6 }
+};
+
+function fmtK(v) { return v >= 1000 ? `$${(v/1000).toFixed(0)}K` : `$${v.toFixed(0)}`; }
+function fmtPct(v) { return (v >= 0 ? '+' : '') + v.toFixed(2) + '%'; }
+function hex2rgba(hex, alpha) {
+  const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+
+function switchTab(name) {
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('pane-'+name).classList.add('active');
+  event.target.classList.add('active');
+}
+
+function buildOverview() {
+
+  const days = Array.from({length:PORTFOLIO.length}, (_,i)=>i+1);
+  new Chart(document.getElementById('portfolioChart'), {
+    type:'line',
+    data:{
+      labels: days,
+      datasets:[
+        {
+          label:'Portfolio',
+          data: PORTFOLIO,
+          borderColor:'#3b82f6', backgroundColor: hex2rgba('#3b82f6',0.08),
+          borderWidth:2, fill:true, tension:0.3, pointRadius:0
+        },
+        {
+          label:'S&P 500',
+          data: SP500,
+          borderColor:'#22c55e', backgroundColor: 'transparent',
+          borderWidth:1.5, fill:false, tension:0.3, pointRadius:0, borderDash:[5,4]
+        }
+      ]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      interaction:{mode:'index',intersect:false},
+      plugins:{
+        legend:{labels:{boxWidth:10, padding:16, color:'#7a9bbc'}},
+        tooltip:{
+          backgroundColor:'#0d1420', borderColor:'#1e2f48', borderWidth:1,
+          titleFont:{family:"'Syne',sans-serif", size:13},
+          callbacks:{
+            label: ctx => ` ${ctx.dataset.label}: $${ctx.parsed.y.toLocaleString('en',{maximumFractionDigits:0})}`
+          }
+        }
+      },
+      scales:{
+        x:{...baseGridOpts, ticks:{...baseGridOpts.ticks, callback:(v,i)=>i%42===0?`Day ${i+1}`:null}},
+        y:{...baseGridOpts, ticks:{...baseGridOpts.ticks, callback:v=>fmtK(v)}}
+      }
+    }
+  });
+
+  const wb = document.getElementById('weightBars');
+  TICKERS.forEach(t => {
+    const pct = WEIGHTS[t]*100;
+    wb.innerHTML += `<div class="weight-row">
+      <div class="weight-ticker">${t}</div>
+      <div class="weight-bar-bg"><div class="weight-bar-fill" style="width:${pct*3}%;background:${COLORS[t]};"></div></div>
+      <div class="weight-pct">${pct}%</div>
+    </div>`;
+  });
+
+  new Chart(document.getElementById('sectorChart'), {
+    type:'doughnut',
+    data:{
+      labels:['Technology','Consumer'],
+      datasets:[{data:[85,15], backgroundColor:['#3b82f6','#f59e0b'], borderWidth:0, hoverOffset:4}]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false, cutout:'68%',
+      plugins:{legend:{position:'right', labels:{boxWidth:10,padding:10,color:'#7a9bbc'}}}
+    }
+  });
+
+  const tbody = document.getElementById('stockTableBody');
+  TICKERS.forEach(t => {
+    const s = STOCK_META[t];
+    const chgCls = s.change_pct>=0?'up':'dn';
+    const sharpeCls = s.sharpe>1?'tag-up':s.sharpe>0?'tag-neu':'tag-dn';
+    tbody.innerHTML += `<tr>
+      <td><span class="t-dot" style="background:${COLORS[t]}"></span><span class="t-name">${t}</span></td>
+      <td>$${s.end.toFixed(2)}</td>
+      <td>$${s.start.toFixed(2)}</td>
+      <td class="${chgCls}">${s.change_pct>=0?'+':''}${s.change_pct.toFixed(2)}%</td>
+      <td>$${s.high.toFixed(2)}</td>
+      <td>$${s.low.toFixed(2)}</td>
+      <td>${s.volatility.toFixed(2)}%/day</td>
+      <td><span class="tag ${sharpeCls}">${s.sharpe.toFixed(3)}</span></td>
+      <td>
+        <canvas class="spark-canvas" id="spark-${t}" width="90" height="28"></canvas>
+      </td>
+    </tr>`;
+  });
+
+  TICKERS.forEach(t => {
+    const cv = document.getElementById('spark-'+t);
+    const pr = PRICES[t];
+    new Chart(cv, {
+      type:'line',
+      data:{labels:pr.map((_,i)=>i), datasets:[{data:pr, borderColor:COLORS[t], borderWidth:1.5, pointRadius:0, fill:false, tension:0.3}]},
+      options:{responsive:false, animation:false, plugins:{legend:{display:false},tooltip:{enabled:false}}, scales:{x:{display:false},y:{display:false}}}
+    });
+  });
+
+  const bins = 20, binData = {};
+  TICKERS.forEach(t => {
+    const rets = PRICES[t].slice(1).map((p,i)=>(p/PRICES[t][i]-1)*100);
+    const mn=-5, mx=5, bw=(mx-mn)/bins;
+    const counts = Array(bins).fill(0);
+    rets.forEach(r=>{const bi=Math.min(Math.floor((r-mn)/bw),bins-1); if(bi>=0)counts[bi]++;});
+    binData[t] = counts;
+  });
+  const binLabels = Array.from({length:bins},(_,i)=>((i*(10/bins)-5)).toFixed(1)+'%');
+  new Chart(document.getElementById('returnDistChart'), {
+    type:'bar',
+    data:{
+      labels: binLabels,
+      datasets: TICKERS.map(t=>({
+        label:t, data:binData[t], backgroundColor:hex2rgba(COLORS[t],0.55),
+        borderColor:COLORS[t], borderWidth:1, borderRadius:2
+      }))
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false, barPercentage:1.0, categoryPercentage:1.0,
+      plugins:{legend:{labels:{boxWidth:10,padding:12,color:'#7a9bbc'}}},
+      scales:{x:{...baseGridOpts, ticks:{...baseGridOpts.ticks, maxRotation:0, autoSkip:true, maxTicksLimit:8}}, y:{...baseGridOpts}}
+    }
+  });
+
+  const normSets = TICKERS.map(t => {
+    const base = PRICES[t][0];
+    return {
+      label:t, data:PRICES[t].map(p=>+(p/base*100).toFixed(2)),
+      borderColor:COLORS[t], borderWidth:2, fill:false, tension:0.3, pointRadius:0
+    };
+  });
+  normSets.push({
+    label:'S&P 500', data:SP500.map(p=>+(p/100000*100).toFixed(2)),
+    borderColor:'#64748b', borderWidth:1.5, fill:false, tension:0.3, pointRadius:0, borderDash:[4,3]
+  });
+  new Chart(document.getElementById('normRetChart'), {
+    type:'line',
+    data:{labels:days, datasets:normSets},
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      interaction:{mode:'index',intersect:false},
+      plugins:{legend:{labels:{boxWidth:10,padding:12,color:'#7a9bbc'}}},
+      scales:{
+        x:{...baseGridOpts, ticks:{...baseGridOpts.ticks, callback:(v,i)=>i%50===0?`D${i}`:null}},
+        y:{...baseGridOpts, ticks:{...baseGridOpts.ticks, callback:v=>v.toFixed(0)}}
+      }
+    }
+  });
+}
+
+let stockCharts = {};
+let activeTicker = 'AAPL';
+
+function buildStocksTab() {
+  const btnWrap = document.getElementById('stockBtns');
+  TICKERS.forEach(t => {
+    const btn = document.createElement('button');
+    btn.textContent = t;
+    btn.style.cssText = `font-family:'Syne',sans-serif;font-size:13px;font-weight:700;padding:8px 20px;
+      border-radius:8px;border:1px solid ${COLORS[t]}40;background:${COLORS[t]}15;color:${COLORS[t]};cursor:pointer;transition:.2s;`;
+    btn.onclick = () => { activeTicker=t; updateStockTab(t); };
+    btnWrap.appendChild(btn);
+  });
+  updateStockTab('AAPL');
+}
+
+function updateStockTab(t) {
+  document.getElementById('stockChartTitle').textContent = `${t} — Price Series (252 Trading Days)`;
+  document.getElementById('volChartTitle').textContent = `${t} — Simulated Daily Volume`;
+  document.getElementById('retChartTitle').textContent = `${t} — Rolling 21-Day Return (%)`;
+
+  const prices = PRICES[t];
+  const days = prices.map((_,i)=>i+1);
+  const color = COLORS[t];
+  const s = STOCK_META[t];
+  const r = RISK_METRICS[t];
+
+  if(stockCharts.price) stockCharts.price.destroy();
+  stockCharts.price = new Chart(document.getElementById('stockPriceChart'), {
+    type:'line',
+    data:{
+      labels:days,
+      datasets:[{
+        label:`${t} Price`,
+        data:prices, borderColor:color,
+        backgroundColor: (ctx) => {
+          const g = ctx.chart.ctx.createLinearGradient(0,0,0,320);
+          g.addColorStop(0, hex2rgba(color,0.25));
+          g.addColorStop(1, hex2rgba(color,0.0));
+          return g;
+        },
+        fill:true, borderWidth:2, tension:0.3, pointRadius:0
+      }]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      interaction:{mode:'index',intersect:false},
+      plugins:{legend:{display:false}, tooltip:{
+        backgroundColor:'#0d1420', borderColor:'#1e2f48', borderWidth:1,
+        callbacks:{label:ctx=>`  $${ctx.parsed.y.toFixed(2)}`}
+      }},
+      scales:{
+        x:{...baseGridOpts, ticks:{...baseGridOpts.ticks, callback:(v,i)=>i%40===0?`D${i+1}`:null}},
+        y:{...baseGridOpts, ticks:{...baseGridOpts.ticks, callback:v=>`$${v.toFixed(0)}`}}
+      }
+    }
+  });
+
+  const mp = document.getElementById('stockMetricsPanel');
+  const metrics = [
+    ['Current Price', `$${s.end.toFixed(2)}`,''],
+    ['Start Price', `$${s.start.toFixed(2)}`,''],
+    ['Total Return', `${s.change_pct>=0?'+':''}${s.change_pct.toFixed(2)}%`, s.change_pct>=0?'up':'dn'],
+    ['52-Week High', `$${s.high.toFixed(2)}`,'neu'],
+    ['52-Week Low', `$${s.low.toFixed(2)}`,'neu'],
+    ['Daily Volatility', `${s.volatility.toFixed(4)}%`,''],
+    ['Sharpe Ratio', `${s.sharpe.toFixed(3)}`, s.sharpe>1?'up':s.sharpe>0?'neu':'dn'],
+    ['VaR 95%', `${r.var_95.toFixed(2)}%`,'dn'],
+    ['CVaR 95%', `${r.cvar_95.toFixed(2)}%`,'dn'],
+    ['Max Drawdown', `${r.max_drawdown.toFixed(2)}%`,'dn'],
+    ['Beta vs S&P', `${r.beta.toFixed(3)}`,''],
+    ['Allocation', `${(WEIGHTS[t]*100).toFixed(0)}%`,''],
+  ];
+  mp.innerHTML = metrics.map(([k,v,cls])=>`
+    <div class="risk-row">
+      <span class="risk-key">${k}</span>
+      <span class="risk-val ${cls}">${v}</span>
+    </div>`).join('');
+
+  const vols = Array.from({length:252},()=>Math.floor(Math.random()*5e6+2e6));
+  if(stockCharts.vol) stockCharts.vol.destroy();
+  stockCharts.vol = new Chart(document.getElementById('stockVolChart'), {
+    type:'bar',
+    data:{labels:days, datasets:[{label:'Volume', data:vols, backgroundColor:hex2rgba(color,0.35), borderColor:'transparent', borderRadius:1}]},
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{
+        x:{...baseGridOpts, ticks:{...baseGridOpts.ticks, callback:(v,i)=>i%50===0?`D${i+1}`:null}},
+        y:{...baseGridOpts, ticks:{...baseGridOpts.ticks, callback:v=>`${(v/1e6).toFixed(1)}M`}}
+      }
+    }
+  });
+
+  const rets = prices.slice(1).map((p,i)=>(p/prices[i]-1)*100);
+  const roll21 = rets.map((_,i)=>i>=20?rets.slice(i-20,i+1).reduce((a,b)=>a+b,0):null);
+  if(stockCharts.roll) stockCharts.roll.destroy();
+  stockCharts.roll = new Chart(document.getElementById('stockRollingChart'), {
+    type:'line',
+    data:{
+      labels:days.slice(1),
+      datasets:[{
+        label:'Rolling 21D Return %',
+        data:roll21,
+        borderColor:color, backgroundColor:'transparent',
+        borderWidth:2, fill:false, tension:0.4, pointRadius:0,
+        segment:{borderColor:ctx=>ctx.p1.parsed.y>=0?'#22c55e':'#ef4444'}
+      }]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{
+        x:{...baseGridOpts, ticks:{...baseGridOpts.ticks, callback:(v,i)=>i%50===0?`D${i+1}`:null}},
+        y:{...baseGridOpts, ticks:{...baseGridOpts.ticks, callback:v=>fmtPct(v)}}
+      }
+    }
+  });
+}
+
+function buildRiskTab() {
+  const rc = document.getElementById('riskCards');
+  TICKERS.forEach(t => {
+    const r = RISK_METRICS[t];
+    rc.innerHTML += `<div class="risk-card">
+      <div class="risk-card-ticker" style="color:${COLORS[t]}">${t}</div>
+      <div class="risk-row"><span class="risk-key">VaR 95%</span><span class="risk-val dn">${r.var_95.toFixed(2)}%</span></div>
+      <div class="risk-row"><span class="risk-key">CVaR 95%</span><span class="risk-val dn">${r.cvar_95.toFixed(2)}%</span></div>
+      <div class="risk-row"><span class="risk-key">Max Drawdown</span><span class="risk-val dn">${r.max_drawdown.toFixed(2)}%</span></div>
+      <div class="risk-row"><span class="risk-key">Beta</span><span class="risk-val ${Math.abs(r.beta)<0.5?'neu':'dn'}">${r.beta.toFixed(3)}</span></div>
+    </div>`;
+  });
+
+
+  const cm = document.getElementById('corrMatrix');
+  const size = TICKERS.length;
+  cm.innerHTML = `<div class="corr-grid" style="grid-template-columns:48px repeat(${size},1fr);">`;
+ 
+  let html = `<div></div>`;
+  TICKERS.forEach(t => html += `<div class="corr-label">${t}</div>`);
+  TICKERS.forEach(t1 => {
+    html += `<div class="corr-label" style="justify-content:flex-end;padding-right:8px;">${t1}</div>`;
+    TICKERS.forEach(t2 => {
+      const c = CORR[t1][t2];
+      const alpha = Math.abs(c);
+      const bg = t1===t2 ? '#1e2f48' : c > 0 ? `rgba(59,130,246,${alpha*0.85+0.1})` : `rgba(239,68,68,${alpha*0.85+0.1})`;
+      const textColor = alpha > 0.4 ? '#e8f2ff' : '#7a9bbc';
+      html += `<div class="corr-cell" style="background:${bg};color:${textColor};" title="${t1}/${t2}: ${c}">${c.toFixed(2)}</div>`;
+    });
+  });
+  cm.innerHTML = `<div class="corr-grid" style="display:grid;grid-template-columns:48px repeat(${size},1fr);gap:3px;">${html}</div>`;
+
+  new Chart(document.getElementById('varChart'), {
+    type:'bar',
+    data:{
+      labels:TICKERS,
+      datasets:[
+        {label:'VaR 95%', data:TICKERS.map(t=>Math.abs(RISK_METRICS[t].var_95)), backgroundColor:TICKERS.map(t=>hex2rgba(COLORS[t],0.7)), borderRadius:4},
+        {label:'CVaR 95%', data:TICKERS.map(t=>Math.abs(RISK_METRICS[t].cvar_95)), backgroundColor:TICKERS.map(t=>hex2rgba(COLORS[t],0.35)), borderRadius:4}
+      ]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{labels:{boxWidth:10,padding:12,color:'#7a9bbc'}},
+        tooltip:{callbacks:{label:ctx=>`${ctx.dataset.label}: -${ctx.parsed.y.toFixed(2)}%`}}},
+      scales:{x:{...baseGridOpts},y:{...baseGridOpts,ticks:{...baseGridOpts.ticks,callback:v=>`${v.toFixed(1)}%`}}}
+    }
+  });
+
+
+  new Chart(document.getElementById('drawdownChart'), {
+    type:'bar',
+    data:{
+      labels:TICKERS,
+      datasets:[{label:'Max Drawdown %', data:TICKERS.map(t=>RISK_METRICS[t].max_drawdown), backgroundColor:TICKERS.map(t=>hex2rgba(COLORS[t],0.65)), borderRadius:4}]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false, indexAxis:'y',
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`${ctx.parsed.x.toFixed(2)}%`}}},
+      scales:{
+        x:{...baseGridOpts,ticks:{...baseGridOpts.ticks,callback:v=>`${v}%`}},
+        y:{...baseGridOpts}
+      }
+    }
+  });
+
+  new Chart(document.getElementById('betaChart'), {
+    type:'bar',
+    data:{
+      labels:TICKERS,
+      datasets:[{
+        label:'Beta',
+        data:TICKERS.map(t=>RISK_METRICS[t].beta),
+        backgroundColor:TICKERS.map(t=>RISK_METRICS[t].beta>=0?hex2rgba(COLORS[t],0.7):'rgba(239,68,68,0.6)'),
+        borderRadius:4
+      }]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{
+        x:{...baseGridOpts},
+        y:{...baseGridOpts,ticks:{...baseGridOpts.ticks,callback:v=>v.toFixed(2)}}
+      }
+    }
+  });
+}
+
+function buildHeatmapTab() {
+  const t = document.getElementById('heatTable');
+  let html = '<thead><tr><th>Stock</th>';
+  MONTHS.forEach(m => html += `<th>${m}</th>`);
+  html += '<th>Total</th></tr></thead><tbody>';
+  TICKERS.forEach(tick => {
+    const mrets = MONTHLY[tick];
+    const total = mrets.reduce((a,b)=>a+b,0).toFixed(2);
+    html += `<tr><td style="font-family:'Syne',sans-serif;font-weight:700;color:${COLORS[tick]};padding:5px 8px;">${tick}</td>`;
+    mrets.forEach(r => {
+      const alpha = Math.min(Math.abs(r)/20, 1);
+      const bg = r>0 ? `rgba(34,197,94,${alpha*0.8+0.08})` : r<0 ? `rgba(239,68,68,${alpha*0.8+0.08})` : '#1e2f48';
+      const tc = Math.abs(r)>8 ? '#e8f2ff' : r>0 ? '#86efac' : '#fca5a5';
+      html += `<td><div class="heat-cell" style="background:${bg};color:${tc};">${r>0?'+':''}${r}%</div></td>`;
+    });
+    const totBg = +total>0?'rgba(34,197,94,0.2)':'rgba(239,68,68,0.2)';
+    const totC = +total>0?'#22c55e':'#ef4444';
+    html += `<td><div class="heat-cell" style="background:${totBg};color:${totC};font-weight:600;">${+total>0?'+':''}${total}%</div></td>`;
+    html += '</tr>';
+  });
+  html += '</tbody>';
+  t.innerHTML = html;
+
+  new Chart(document.getElementById('bestMonthChart'), {
+    type:'bar',
+    data:{
+      labels:TICKERS,
+      datasets:[{
+        label:'Best Month %',
+        data:TICKERS.map(t=>Math.max(...MONTHLY[t])),
+        backgroundColor:TICKERS.map(t=>hex2rgba(COLORS[t],0.7)),
+        borderRadius:4
+      }]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`+${ctx.parsed.y.toFixed(2)}%`}}},
+      scales:{x:{...baseGridOpts},y:{...baseGridOpts,ticks:{...baseGridOpts.ticks,callback:v=>`+${v}%`}}}
+    }
+  });
+
+  const stdDevs = TICKERS.map(t => {
+    const m = MONTHLY[t];
+    const mean = m.reduce((a,b)=>a+b,0)/m.length;
+    const variance = m.reduce((a,b)=>a+(b-mean)**2,0)/m.length;
+    return Math.sqrt(variance);
+  });
+  new Chart(document.getElementById('monthlyVolChart'), {
+    type:'bar',
+    data:{
+      labels:TICKERS,
+      datasets:[{
+        label:'Monthly Return Std Dev %',
+        data:stdDevs,
+        backgroundColor:TICKERS.map(t=>hex2rgba(COLORS[t],0.65)),
+        borderRadius:4
+      }]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false, indexAxis:'y',
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`${ctx.parsed.x.toFixed(2)}%`}}},
+      scales:{x:{...baseGridOpts,ticks:{...baseGridOpts.ticks,callback:v=>`${v.toFixed(1)}%`}},y:{...baseGridOpts}}
+    }
+  });
+}
+
+function buildInsightsTab() {
+  const insights = [
+    {icon:'🚀',title:'AMZN & GOOGL Lead Returns',stat:'+61%',stat_c:'up',body:'Amazon (+61.2%) and Google (+60.3%) significantly outperformed both the portfolio average and the S&P 500 benchmark. Their momentum drove most of the portfolio gains.'},
+    {icon:'📉',title:'Portfolio Underperformed Benchmark',stat:'−18.4%',stat_c:'dn',body:'The S&P 500 returned +40.8% while the portfolio returned +22.4%. The large MSFT allocation (25%) which lost 8% was a key drag on alpha generation.'},
+    {icon:'⚡',title:'NVDA Highest Volatility',stat:'2.81%/day',stat_c:'dn',body:'NVIDIA shows 2.81% daily volatility — 2× higher than MSFT. Its max drawdown of −21.6% shows GPU-sector risk. Sharpe of 0.625 is decent for such volatility.'},
+    {icon:'🔗',title:'Low Correlation Portfolio',stat:'avg 0.02',stat_c:'up',body:'Average cross-stock correlation is near zero, suggesting good diversification benefits. AMZN and MSFT even show slight negative correlation, improving risk-adjusted returns.'},
+    {icon:'🏆',title:'GOOGL Best Sharpe Ratio',stat:'1.956',stat_c:'up',body:'Google\'s Sharpe of 1.956 is exceptional — it delivered 60% returns with only 1.63% daily volatility. It provides the best risk-adjusted return in the portfolio.'},
+    {icon:'🛡️',title:'MSFT Lowest Drawdown',stat:'−15.1%',stat_c:'neu',body:'Despite negative total return, MSFT showed the smallest max drawdown (−15.1%) and lowest daily volatility (1.25%). It acts as a defensive anchor in the portfolio.'},
+  ];
+  const ig = document.getElementById('insightGrid');
+  insights.forEach(({icon,title,stat,stat_c,body})=>{
+    ig.innerHTML += `<div class="insight-card">
+      <div class="insight-icon">${icon}</div>
+      <div class="insight-stat ${stat_c}">${stat}</div>
+      <div class="insight-title">${title}</div>
+      <div class="insight-body">${body}</div>
+    </div>`;
+  });
+
+  new Chart(document.getElementById('sharpeChart'), {
+    type:'bar',
+    data:{
+      labels:TICKERS,
+      datasets:[{
+        label:'Sharpe Ratio',
+        data:TICKERS.map(t=>STOCK_META[t].sharpe),
+        backgroundColor:TICKERS.map(t=>STOCK_META[t].sharpe>0?hex2rgba(COLORS[t],0.7):'rgba(239,68,68,0.55)'),
+        borderRadius:5
+      }]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false},
+        annotation:{annotations:{zero:{type:'line',yMin:0,yMax:0,borderColor:'#4d6a8a',borderDash:[4,4]}}}},
+      scales:{
+        x:{...baseGridOpts},
+        y:{...baseGridOpts,ticks:{...baseGridOpts.ticks,callback:v=>v.toFixed(2)}}
+      }
+    }
+  });
+
+  new Chart(document.getElementById('riskReturnChart'), {
+    type:'scatter',
+    data:{
+      datasets: TICKERS.map(t => ({
+        label:t,
+        data:[{x: STOCK_META[t].volatility, y: STOCK_META[t].change_pct}],
+        backgroundColor: hex2rgba(COLORS[t],0.8),
+        borderColor: COLORS[t],
+        pointRadius: 10, pointHoverRadius: 13
+      }))
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{
+        legend:{labels:{boxWidth:10,padding:12,color:'#7a9bbc'}},
+        tooltip:{callbacks:{label:ctx=>`${ctx.dataset.label}: Risk=${ctx.parsed.x.toFixed(2)}% | Return=${ctx.parsed.y.toFixed(1)}%`}}
+      },
+      scales:{
+        x:{...baseGridOpts, title:{display:true,text:'Daily Volatility (%)',color:'#4d6a8a'},
+           ticks:{...baseGridOpts.ticks,callback:v=>`${v.toFixed(1)}%`}},
+        y:{...baseGridOpts, title:{display:true,text:'Total Return (%)',color:'#4d6a8a'},
+           ticks:{...baseGridOpts.ticks,callback:v=>`${v.toFixed(0)}%`}}
+      }
+    }
+  });
+
+  const items = [
+    {label:'Initial Capital',value:'$100,000',cls:''},
+    {label:'Final Value',value:'$122,431',cls:'up'},
+    {label:'Total Return',value:'+22.43%',cls:'up'},
+    {label:'S&P 500 Return',value:'+40.81%',cls:'neu'},
+    {label:'Alpha Generated',value:'−18.38%',cls:'dn'},
+    {label:'Best Stock',value:'AMZN +61.2%',cls:'up'},
+    {label:'Worst Stock',value:'MSFT −8.0%',cls:'dn'},
+    {label:'Avg Sharpe',value:'0.946',cls:'up'},
+  ];
+  const sg = document.getElementById('summaryGrid');
+  items.forEach(({label,value,cls})=>{
+    sg.innerHTML += `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--r2);padding:16px;">
+      <div style="font-family:var(--font-mono);font-size:10px;color:var(--text3);letter-spacing:.06em;margin-bottom:6px;">${label}</div>
+      <div style="font-family:var(--font-head);font-size:18px;font-weight:700;" class="${cls}">${value}</div>
+    </div>`;
+  });
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+  buildOverview();
+  buildStocksTab();
+  buildRiskTab();
+  buildHeatmapTab();
+  buildInsightsTab();
+});
+</script>
+</body>
+</html>
